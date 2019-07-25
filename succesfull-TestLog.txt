@@ -1,0 +1,8 @@
+7/25/2019 5:00:14 PM   Tufin Test Started!
+7/25/2019 5:01:35 PM   The ynet news home page succesfully opened
+7/25/2019 5:01:35 PM   The current weather in the homepage is-31C
+7/25/2019 5:01:35 PM   The weather in Eilat is-42C
+7/25/2019 5:02:15 PM   -send to a friend- link exists in the article
+7/25/2019 5:02:17 PM   The reCAPTCHA frame exist
+7/25/2019 5:04:03 PM   article list is NOT moving on mouse hover
+7/25/2019 5:04:03 PM   Test finished with-0  errors
