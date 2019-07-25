@@ -1,0 +1,8 @@
+7/25/2019 5:31:09 PM   Tufin Test Started!
+7/25/2019 5:31:35 PM   The ynet news home page failed to open!
+7/25/2019 5:31:35 PM   !!!Failed to print the weather
+7/25/2019 5:31:36 PM   !!!Fail to open choosen artcle
+7/25/2019 5:31:42 PM   !!!Fail to find *send to a friend*
+7/25/2019 5:31:42 PM   !!!Test aborted with unknown exception
+7/25/2019 5:33:32 PM   article list is NOT moving on mouse hover
+7/25/2019 5:33:32 PM   Test finished with-4  errors
