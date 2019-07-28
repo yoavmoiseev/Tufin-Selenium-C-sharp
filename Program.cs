@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.IO;
 using System.Drawing;
+using System.Reflection;
 
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
@@ -21,6 +22,9 @@ namespace Selenium
     /// </summary>
     public static class Consts
     {
+        //log file name and location
+        public const string LOG_FILE_NAME = "TestLog";
+        public const int WAIT_SECONDS = 5;
         public const string UPDATE_IFRAME_ELEMENT= "news_ticker_iframe";
         public const string CAPTCHA_ELEMENT= "//a[2]";
         public const string REMARKS_TEXT="tufin test";
@@ -34,7 +38,6 @@ namespace Selenium
         public const string YNET_LINK_PART = "https://www.ynetnews.com/home/";
         public const string YNET_LINK = "https://www.ynetnews.com/home/0,7340,L-3083,00.html";
         public const string YNET_LINK_ELEMENT ="//h3[contains(.,'ynetnews - Homepage')]";
-    
         public const string CHROME_DRIVER_LOCATION = @"\Tufin\Selenium\Selenium\bin\Debug";
 
         public const string  GOOGLE_LINK= "http:www.google.com";
@@ -47,18 +50,12 @@ namespace Selenium
     }
     public class TufinTest
     {
-        
+        //Global Variables
         IWebDriver _driver; 
-        //Test Default Parameters
-        const int WaitSec = 5;
-        int ErrorCounter = 0;
-
-        //log file name and location
-        const string logFileName = "TestLog.txt", folderName = "Test Logs";
+        int _ErrorCounter = 0;
         //Create or overWrite log file
-        System.IO.StreamWriter file;
-
-     
+        System.IO.StreamWriter _file;
+        string _logsFolderName;
 
         /// <summary>
         ///  Automatic test Using SELENIUM that performs the steps bellow:
@@ -76,17 +73,14 @@ namespace Selenium
         /// <returns></returns>
         public int RunTest()
         {
-            
             var options = new ChromeOptions();
             options.AddArgument("-no-sandbox");
             //Create a driver instance for chromedrive
-            IWebDriver driver = new ChromeDriver(Consts.CHROME_DRIVER_LOCATION, options, TimeSpan.FromMinutes(2));
+                                                 //get the location of chromeDrive.exe that located with the .exe
+            IWebDriver driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), options, TimeSpan.FromMinutes(2));
 
             //Update the globale variable value with current one
             _driver = driver;
-
-            //temp variable
-            IWebDriver driverOld;
 
             //elemets of web page
             IWebElement e, e2;
@@ -100,8 +94,6 @@ namespace Selenium
 
                 try
                 {
-                    // wait for page loading
-                    // Wait();
                     //Search for “Ynetnews” in google
                     e = driver.FindElement(By.XPath(Consts.GOOGLE_SEARCH_ELEMENT));
                     e.SendKeys("Ynetnews");
@@ -111,7 +103,6 @@ namespace Selenium
                 {
                     errorHandler("!!!Failed to find *google search* element");
                 }
-
                 try
                 {
                     //Enter the website  thru the link
@@ -119,8 +110,17 @@ namespace Selenium
                 }
                 catch
                 {
-                    errorHandler("!!!Failed to find *ynetnews - Homepage* link. WorkAround-going to site directly");
-                    driver.Navigate().GoToUrl(Consts.YNET_LINK);
+                    errorHandler("!!!Failed to find *ynetnews - Homepage* link. WorkAround-going to site directly");               
+                    try
+                    {
+                        driver.Close();
+                        driver.Navigate().GoToUrl(Consts.YNET_LINK);
+                        _driver = driver;
+                    }
+                    catch
+                    {
+                        writeToLog("!!!Failed navigating to the link-" + Consts.YNET_LINK);
+                    }
                 }
 
                 try
@@ -207,10 +207,11 @@ namespace Selenium
 
                 try
                 {
-                    driverOld = driver;
+                   
                     //switch to child window-[1], the father window is-[0]
                     String handlewindow = driver.WindowHandles[1];
                     driver.SwitchTo().Window(handlewindow);
+
                 }
                 catch
                 {
@@ -238,10 +239,6 @@ namespace Selenium
                     writeToLog("The reCAPTCHA frame exist");
                 else
                     writeToLog("The reCAPTCHA frame NOT found");
-
-
-
-                driver.Close();
             }
             catch//global catch-for unknown exeption
             {
@@ -249,34 +246,45 @@ namespace Selenium
                 //aborted execution
                 return (-1);
             }
+
+          
+            testCompleted();
             //normal execution
             return (0);
-
         }
 
 
-
+        /// <summary>
+        ///converts current time to "Uniq File Name", string without exception signs
+        ///to be added to file names to create uniq file names
+        /// </summary>
+        /// <returns>string </returns>
+        public string currentTimeToFileName()
+        {
+            string str;
+            str = DateTime.Now.ToString();
+            str = str + " " + DateTime.Now.Millisecond.ToString();
+            str = str.Replace( '/' ,'_' );
+            str = str.Replace(':', '-');
+            return str;
+        }
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public TufinTest(string fileName = logFileName)
+        public TufinTest(string fileName = Consts.LOG_FILE_NAME)
         {
-            file = new System.IO.StreamWriter(fileName, false);
-            file.WriteLine(DateTime.Now.ToString() + "   " + "Tufin Test Started!");
+            string currentTme = currentTimeToFileName();
+            string uniqFolderName = fileName + " " + currentTme;
+            _logsFolderName = uniqFolderName;
+            string uniqFileName = fileName + ".txt";
+
+            System.IO.Directory.CreateDirectory(uniqFolderName);
+            string pathString = System.IO.Path.Combine(uniqFolderName, uniqFileName);
+            _file = new System.IO.StreamWriter(pathString, false);
+            _file.WriteLine(DateTime.Now.ToString() + "   " + "Tufin Test Started!");
         }
-
-        /// <summary>
-        /// Destructor
-        /// </summary>
-        ~TufinTest()
-        {
-
-            writeToLog("Test finished with-" + ErrorCounter + "  errors");
-
-            //Playing test finished sound
-            Console.Beep(); Console.Beep();
-        }
+   
 
         /// <summary>
         /// Set of operations that always executed when one of steps fails
@@ -288,23 +296,23 @@ namespace Selenium
         /// <returns> 1 on successful execution.</returns>
         int errorHandler(string errorMessage)
         {
-            ErrorCounter++;
-            file.WriteLine(DateTime.Now.ToString() + "   " + errorMessage);
-            file.Flush();
+            _ErrorCounter++;
+            _file.WriteLine(DateTime.Now.ToString() + "   " + errorMessage);
+            _file.Flush();
 
             printScreen(errorMessage);
             return (1);
         }
 
         /// <summary>
-        /// 
+        /// Adds a message to log file
         /// </summary>
         /// <param name="messageToLogFile"></param>
         /// <returns></returns>
         int writeToLog(string messageToLogFile)
         {
-            file.WriteLine(DateTime.Now.ToString() + "   " + messageToLogFile);
-            file.Flush();
+            _file.WriteLine(DateTime.Now.ToString() + "   " + messageToLogFile);
+            _file.Flush();
 
             return (1);
         }
@@ -313,7 +321,7 @@ namespace Selenium
         /// Waiting until page and element loading, for overloaded internet
         /// </summary>
         /// <param name="Sec"></param>
-        void Wait(int Sec = WaitSec)
+        void Wait(int Sec = Consts.WAIT_SECONDS)
         {
             //in mili seconds
             System.Threading.Thread.Sleep(Sec * 1000);
@@ -323,13 +331,15 @@ namespace Selenium
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        public int printScreen(string fileName )
+        public string printScreen(string fileName )
         {
             Screenshot ss = ((ITakesScreenshot)_driver).GetScreenshot();
             string screenshot = ss.AsBase64EncodedString;
             byte[] screenshotAsByteArray = ss.AsByteArray;
-            ss.SaveAsFile(fileName + ".png"); //use any of the built in image formating 
-            return (0);
+            string uniqFileName = fileName + currentTimeToFileName() + ".png";
+            string pathString = System.IO.Path.Combine(_logsFolderName, uniqFileName);
+            ss.SaveAsFile(pathString); //use any of the built in image formating 
+            return (uniqFileName);
         }
 
        
@@ -371,12 +381,13 @@ namespace Selenium
                 //move to text location
                 action.MoveByOffset(5, 5).Perform();
                 Wait(1);
-                printScreen("first");
+                string firstFileName, secondFileName;
+                firstFileName = printScreen("first");
                 Wait(3);
-                printScreen("second");
+                secondFileName=printScreen("second");
                 Wait(1);
                 //compare the pixel in two pictures- if the stoped running it should be equal
-                if (IsPixelEqual("first.png", "second.png", e.Location.X + 5, e.Location.Y + 5))
+                if (IsPixelEqual(firstFileName, secondFileName, e.Location.X + 5, e.Location.Y + 5))
                     writeToLog("article list is NOT moving on mouse hover");
                 else
                     writeToLog("article list is moving on mouse hover");
@@ -385,6 +396,8 @@ namespace Selenium
             {
                 errorHandler("!!!Bonus test failed");
             }
+
+         
         }
 
         /// <summary>
@@ -411,56 +424,71 @@ namespace Selenium
             else
                 return(false);
         }
+        /// <summary>
+        /// Summarize tests results
+        /// </summary>
+        void testCompleted()
+        {
+            writeToLog("Test finished with-" + _ErrorCounter + "  errors");
+            _driver.Close();
+            //Playing test finished sound
+            Console.Beep(); Console.Beep();
     }
 
+}
 
-    
+
+ 
 
     class Program
     {
-        /*for parallel execution
+        //for parallel execution
         public static void ParalelExecution()
         {
-            Random randomNumber = new Random((int)DateTime.Now.Ticks); //declarate a new variable
-            int number = randomNumber.Next(1000);
-            TufinTest test1;
-            test1 = new TufinTest( number.ToString()+ ".txt");
+            TufinTest test1= new TufinTest();
             test1.RunTest();
         }
-        */
+        
         
         static void Main(string[] args)
         {
             
-            TufinTest test1 = new TufinTest();
+            TufinTest test1;
+            
+            //single execution
+            test1 = new TufinTest();
             test1.RunTest();
             test1.bonus();
+            
 
-            //Sequenced execution
+
             /*
-            for (int i = 0; i < 20; i++)
+            //Sequenced execution
+            for (int i = 0; i < 10; i++)
             {
-               test1 = new TufinTest(i.ToString()+ ".txt");
+               test1 = new TufinTest(i.ToString());
                test1.RunTest();
             }
             */
+         
 
-
-            //Preparation for parallel execution
+            //parallel execution
             /*
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 5; i++)
             {
                 Thread thread = new Thread(ParalelExecution);
                 thread.Start();
-                System.Threading.Thread.Sleep(5000);
+                System.Threading.Thread.Sleep(10000);
             }
             */
+            
+            
 
 
 
         }
 
-}
+    }
 
 }
 
